@@ -6,50 +6,62 @@ const supabase = createClient(
 );
 
 export default async function Home() {
-  const { data: jobs, error } = await supabase
+  const { data: jobs } = await supabase
     .from("jobs")
     .select("*")
     .order("id", { ascending: false });
 
-  if (error) {
-    console.error(error);
-  }
-
   return (
-    <main style={{ padding: "40px" }}>
-      <h1>Remote Climate & Sustainability Jobs</h1>
+    <main className="px-6 py-16 max-w-5xl mx-auto">
+      {/* HERO */}
+      <h1 className="text-4xl font-bold text-green-800 text-center">
+        Remote Climate & Sustainability Jobs
+      </h1>
 
-      <section style={{ marginTop: "40px" }}>
-        <h2>Latest Opportunities</h2>
+      <p className="text-center mt-4 text-gray-600">
+        Curated remote roles from climate tech startups and green companies.
+      </p>
 
-        {jobs && jobs.length === 0 && <p>No jobs yet</p>}
+      <div className="flex justify-center gap-4 mt-6">
+        <button className="bg-green-700 text-white px-6 py-2 rounded">
+          Get Weekly Jobs
+        </button>
+        <button className="border border-green-700 text-green-700 px-6 py-2 rounded">
+          Post a Job
+        </button>
+      </div>
 
-        {jobs?.map((job) => (
-          <div
-            key={job.id}
-            style={{
-              border: "1px solid #ddd",
-              padding: "16px",
-              marginBottom: "16px",
-              borderRadius: "8px",
-            }}
-          >
-            <h3>{job.title}</h3>
-            <p>
-              {job.company} · {job.location}
-            </p>
+      {/* JOB LIST */}
+      <section className="mt-12">
+        <h2 className="text-2xl font-semibold mb-6">
+          Latest Opportunities
+        </h2>
 
-            {job.apply_url && (
-              <a
-                href={job.apply_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Apply →
-              </a>
-            )}
-          </div>
-        ))}
+        <div className="space-y-4">
+          {jobs?.map((job) => (
+            <div
+              key={job.id}
+              className="border rounded-lg p-4 hover:shadow"
+            >
+              <h3 className="font-semibold text-lg">
+                {job.title}
+              </h3>
+              <p className="text-sm text-gray-600">
+                {job.company} · {job.location}
+              </p>
+
+              {job.apply_url && (
+                <a
+                  href={job.apply_url}
+                  target="_blank"
+                  className="text-green-700 font-medium mt-2 inline-block"
+                >
+                  Apply →
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
       </section>
     </main>
   );
