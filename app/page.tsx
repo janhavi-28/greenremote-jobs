@@ -1,57 +1,56 @@
-export default function Home() {
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+export default async function Home() {
+  const { data: jobs, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) {
+    console.error(error);
+  }
+
   return (
-    <main className="min-h-screen px-6 py-12 max-w-6xl mx-auto">
-      
-      {/* Hero */}
-      <section className="text-center py-20">
-        <h1 className="text-4xl md:text-5xl font-bold text-green-900">
-          Remote Climate & Sustainability Jobs
-        </h1>
-        <p className="mt-6 text-lg text-gray-600 max-w-2xl mx-auto">
-          Curated remote roles from climate tech startups, green companies,
-          and impact-driven organizations. No noise. Just meaningful work.
-        </p>
+    <main style={{ padding: "40px" }}>
+      <h1>Remote Climate & Sustainability Jobs</h1>
 
-        <div className="mt-8 flex justify-center gap-4">
-          <button className="bg-green-900 text-white px-6 py-3 rounded-md font-medium hover:bg-green-800 transition">
-            Get Weekly Jobs
-          </button>
-          <button className="border border-green-900 text-green-900 px-6 py-3 rounded-md font-medium hover:bg-green-50 transition">
-            Post a Job
-          </button>
-        </div>
+      <section style={{ marginTop: "40px" }}>
+        <h2>Latest Opportunities</h2>
+
+        {jobs && jobs.length === 0 && <p>No jobs yet</p>}
+
+        {jobs?.map((job) => (
+          <div
+            key={job.id}
+            style={{
+              border: "1px solid #ddd",
+              padding: "16px",
+              marginBottom: "16px",
+              borderRadius: "8px",
+            }}
+          >
+            <h3>{job.title}</h3>
+            <p>
+              {job.company} · {job.location}
+            </p>
+
+            {job.apply_url && (
+              <a
+                href={job.apply_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Apply →
+              </a>
+            )}
+          </div>
+        ))}
       </section>
-
-      {/* Jobs Preview */}
-      <section className="mt-16">
-        <h2 className="text-2xl font-semibold mb-6">Latest Opportunities</h2>
-
-        <div className="grid gap-4">
-          {[
-            "Climate Analyst – Remote",
-            "Sustainability Consultant",
-            "Carbon Accounting Specialist",
-            "Renewable Energy Research Intern"
-          ].map((job, i) => (
-            <div
-              key={i}
-              className="border rounded-lg p-5 hover:shadow-sm transition"
-            >
-              <h3 className="font-medium text-lg">{job}</h3>
-              <p className="text-sm text្ text-gray-500 mt-1">
-                Remote · Climate Tech
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="mt-24 border-t pt-8 text-center text-sm text-gray-500">
-        GreenRemote Jobs © {new Date().getFullYear()}  
-        <br />
-        Remote work for a better planet 🌍
-      </footer>
     </main>
   );
 }
