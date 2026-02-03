@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Remote Climate & Sustainability Jobs",
+  title: "Green Remote Jobs",
   description:
-    "Curated remote climate, sustainability, and green tech jobs. Find meaningful remote work in climate tech.",
+    "Find remote climate, sustainability, and green tech jobs in one click.",
   verification: {
     google: "djU7Igm8eLuK2NTB78lUgqT9yHDYdyXfcEMvfJSh47I",
   },
