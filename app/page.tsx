@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { supabase } from "@/lib/supabase";
 
 export default async function Home() {
@@ -14,24 +16,24 @@ export default async function Home() {
       </h1>
 
       <p className="text-center mt-4 text-gray-600">
-        Find remote climate & sustainability jobs in one click
+        Find remote jobs in one click.
       </p>
 
       <div className="flex justify-center gap-4 mt-6">
-        <button className="bg-green-700 text-white px-6 py-2 rounded">
+        <button className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800">
           Get Weekly Jobs
         </button>
 
         <a
           href="/post-job"
-          className="border border-green-700 text-green-700 px-6 py-2 rounded"
+          className="border border-green-700 text-green-700 px-6 py-2 rounded hover:bg-green-50"
         >
           Post a Job
         </a>
       </div>
 
       {/* JOB LIST */}
-      <section className="mt-14">
+      <section className="mt-12">
         <h2 className="text-2xl font-semibold mb-6">
           Latest Opportunities
         </h2>
