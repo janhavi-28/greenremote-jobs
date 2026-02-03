@@ -1,62 +1,46 @@
-import { createClient } from "@supabase/supabase-js";
-import Link from "next/link";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/lib/supabase";
 
 export default async function Home() {
-  const { data: jobs, error } = await supabase
+  const { data: jobs } = await supabase
     .from("jobs")
     .select("*")
-    .order("id", { ascending: false });
+    .order("created_at", { ascending: false });
 
   return (
-    <main className="px-6 py-16 max-w-5xl mx-auto">
+    <main className="max-w-5xl mx-auto px-6 py-16">
       {/* HERO */}
       <h1 className="text-4xl font-bold text-green-800 text-center">
-        Remote Jobs
+        Green Remote Jobs
       </h1>
 
       <p className="text-center mt-4 text-gray-600">
-        Find remote jobs in one click.
+        Find remote climate & sustainability jobs in one click
       </p>
 
       <div className="flex justify-center gap-4 mt-6">
-        <button className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800">
+        <button className="bg-green-700 text-white px-6 py-2 rounded">
           Get Weekly Jobs
         </button>
 
-        {/* ✅ WORKING POST JOB BUTTON */}
-        <Link href="/post-job">
-          <button className="border border-green-700 text-green-700 px-6 py-2 rounded hover:bg-green-50">
-            Post a Job
-          </button>
-        </Link>
+        <a
+          href="/post-job"
+          className="border border-green-700 text-green-700 px-6 py-2 rounded"
+        >
+          Post a Job
+        </a>
       </div>
 
       {/* JOB LIST */}
-      <section className="mt-12">
+      <section className="mt-14">
         <h2 className="text-2xl font-semibold mb-6">
           Latest Opportunities
         </h2>
 
-        {error && (
-          <p className="text-red-500">Failed to load jobs.</p>
-        )}
-
         <div className="space-y-4">
-          {jobs?.length === 0 && (
-            <p className="text-gray-500">
-              No jobs posted yet.
-            </p>
-          )}
-
           {jobs?.map((job) => (
             <div
               key={job.id}
-              className="border rounded-lg p-4 hover:shadow transition"
+              className="border rounded-lg p-4 hover:shadow"
             >
               <h3 className="font-semibold text-lg">
                 {job.title}
@@ -70,7 +54,6 @@ export default async function Home() {
                 <a
                   href={job.apply_url}
                   target="_blank"
-                  rel="noopener noreferrer"
                   className="text-green-700 font-medium mt-2 inline-block"
                 >
                   Apply →
@@ -78,6 +61,10 @@ export default async function Home() {
               )}
             </div>
           ))}
+
+          {jobs?.length === 0 && (
+            <p className="text-gray-500">No jobs yet.</p>
+          )}
         </div>
       </section>
     </main>
