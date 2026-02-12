@@ -1,69 +1,92 @@
-import { supabase } from "@/lib/supabase";
-import Link from "next/link";
+"use client";
 
-export default async function Home() {
-  const { data: jobs } = await supabase
-    .from("jobs")
-    .select("*")
-    .order("id", { ascending: false });
+import { useEffect, useState } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
+
+export default function JobsPage() {
+  const supabase = getSupabaseClient();  // ← THIS WAS MISSING
+
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    fetchJobs();
+    getUser();
+  }, []);
+
+  const getUser = async () => {
+    const { data } = await supabase.auth.getUser();
+    setUser(data.user);
+  };
+
+  const fetchJobs = async () => {
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error) setJobs(data || []);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase
+      .from("jobs")
+      .delete()
+      .eq("id", id);
+
+    if (!error) {
+      setJobs((prev) => prev.filter((job) => job.id !== id));
+    }
+  };
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-16">
-      {/* HERO */}
-      <h1 className="text-4xl font-bold text-green-700 text-center">
-        Green Remote Jobs
-      </h1>
-
-      <p className="text-center mt-3 text-neutral-600">
-        Find remote jobs in one click.
-      </p>
-
-      <div className="flex justify-center gap-4 mt-6">
-        <button className="bg-green-700 text-white px-6 py-2 rounded-md">
-          Get Weekly Jobs
-        </button>
-
-        <Link
-          href="/post-job"
-          className="border border-green-700 text-green-700 px-6 py-2 rounded-md"
-        >
-          Post a Job
-        </Link>
-      </div>
-
-      {/* JOB LIST */}
-      <section className="mt-14">
-        <h2 className="text-2xl font-semibold mb-6">
-          Latest Opportunities
-        </h2>
-
-        <div className="space-y-4">
-          {jobs?.map((job) => (
-            <div
-              key={job.id}
-              className="border rounded-lg p-4 hover:shadow-sm"
-            >
-              <h3 className="text-lg font-semibold">
-                {job.title}
-              </h3>
-
-              <p className="text-sm text-neutral-600 mt-1">
-                {job.company} · {job.location}
-              </p>
-
-              {job.apply_url && (
-                <a
-                  href={job.apply_url}
-                  target="_blank"
-                  className="inline-block mt-3 text-green-700 font-medium"
-                >
-                  Apply →
-                </a>
-              )}
-            </div>
-          ))}
+    <div className="min-h-screen bg-zinc-950">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <h1 className="text-2xl font-bold text-zinc-100">GreenRemote Jobs</h1>
+          <a
+            href="/jobs"
+            className="inline-flex items-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
+          >
+            Browse all jobs with filters →
+          </a>
         </div>
-      </section>
-    </main>
+        <ul className="space-y-4">
+          {jobs.map((job) => (
+            <li key={job.id}>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-cyan-400">
+                  {(job.title || "")
+                    .replace(/\s*\([mwd]\/[mwd]\/[mwd]\)\s*/gi, " ")
+                    .replace(/\s+/g, " ")
+                    .trim() || job.title}
+                </h2>
+                  <p className="text-sm text-zinc-400 mt-1">{job.company} · {job.location}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={job.apply_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
+                  >
+                    Apply
+                  </a>
+                  {user && (
+                    <button
+                      onClick={() => handleDelete(job.id)}
+                      className="text-sm text-red-400 hover:text-red-300"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }

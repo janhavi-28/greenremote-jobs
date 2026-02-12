@@ -31,6 +31,27 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push to GitHub and import the repo in [Vercel](https://vercel.com).
+2. Add environment variables (see `.env.example`):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+3. Deploy. The app uses the App Router and server-side job fetching; no extra config needed.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Importing jobs from external APIs
+
+The app can pull jobs from **Remotive**, **RemoteOK**, and **ArbeitNow** (all free, no API keys required) and upsert them into Supabase. Duplicates are skipped using `apply_url`.
+
+**Trigger a fetch (e.g. after starting the dev server):**
+
+```bash
+curl http://localhost:3000/api/fetch-jobs
+```
+
+Or open `GET /api/fetch-jobs` in your browser. The response includes how many jobs were fetched per source and how many were newly inserted. Run this periodically (e.g. once or twice per day) to keep listings fresh. On Vercel you can call this route from a [cron job](https://vercel.com/docs/cron-jobs).
+
+## Production & scale
+
+- **Jobs** are fetched server-side on `/jobs` with filters and pagination; the API supports `search`, `location`, `category`, `experience`, `remote`, `sort`, `page`, `limit`.
+- **Performance**: The jobs API selects only needed columns and uses a single Supabase query with `count: "exact"`. Add DB indexes on `jobs(location)`, `jobs(category)`, `jobs(experience_level)`, `jobs(created_at)` if you grow.
+- **Scaling**: Use Vercel’s serverless functions and Supabase connection pooling (Supavisor) for higher traffic.
