@@ -4,7 +4,7 @@ import type { JobFilters } from "./types";
 const DEFAULT_LIMIT = 12;
 
 export interface GetJobsResult {
-  jobs: unknown[];
+  jobs: Record<string, unknown>[];
   total: number;
   page: number;
   totalPages: number;
