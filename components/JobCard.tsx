@@ -13,6 +13,7 @@ interface JobCardProps {
     publication_date?: string | null;
     created_at?: string;
     apply_url?: string;
+    url?: string;
     experience_level?: string | null;
   };
   isAdmin?: boolean;
