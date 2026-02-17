@@ -30,41 +30,74 @@ async function fetchJson<T>(url: string): Promise<T> {
   }
 }
 
-/** Remotive: https://remotive.com/api/remote-jobs */
+/* ------------------------------------------------ */
+/* TYPE GUARD HELPERS                               */
+/* ------------------------------------------------ */
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function hasKeys(
+  obj: Record<string, unknown>,
+  keys: string[]
+): boolean {
+  return keys.every((k) => k in obj);
+}
+
+/* ------------------------------------------------ */
+/* REMOTIVE                                         */
+/* https://remotive.com/api/remote-jobs             */
+/* ------------------------------------------------ */
+
 async function fetchRemotive(limit = 100): Promise<NormalizedJob[]> {
   const url = `https://remotive.com/api/remote-jobs?limit=${limit}`;
   const data = await fetchJson<{ jobs?: unknown[] }>(url);
   const jobs = Array.isArray(data?.jobs) ? data.jobs : [];
+
   return jobs
-    .filter((j: Record<string, unknown>) => j?.url && j?.title && j?.company_name)
-    .map((j: Record<string, unknown>) => ({
+    .filter(
+      (j): j is Record<string, unknown> =>
+        isObject(j) &&
+        hasKeys(j, ["url", "title", "company_name"])
+    )
+    .map((j) => ({
       title: String(j.title ?? ""),
       company: String(j.company_name ?? ""),
       location: String(j.candidate_required_location ?? "Remote"),
       category: j.category != null ? String(j.category) : null,
       description: j.description != null ? String(j.description) : null,
-      publication_date: j.publication_date != null ? String(j.publication_date) : null,
+      publication_date:
+        j.publication_date != null ? String(j.publication_date) : null,
       apply_url: String(j.url ?? ""),
       experience_level: j.job_type != null ? String(j.job_type) : null,
     }));
 }
 
-/** RemoteOK: https://remoteok.com/api (first element is metadata) */
+/* ------------------------------------------------ */
+/* REMOTEOK                                         */
+/* https://remoteok.com/api                         */
+/* ------------------------------------------------ */
+
 async function fetchRemoteOk(): Promise<NormalizedJob[]> {
   const data = await fetchJson<unknown[]>("https://remoteok.com/api");
   if (!Array.isArray(data)) return [];
+
   const jobs = data.filter(
     (item: unknown): item is Record<string, unknown> =>
-      typeof item === "object" &&
-      item !== null &&
+      isObject(item) &&
       "position" in item &&
       "apply_url" in item
   );
+
   return jobs.map((j) => ({
     title: String(j.position ?? ""),
     company: String(j.company ?? ""),
     location: String(j.location ?? "Remote"),
-    category: j.tags?.[0] != null ? String(j.tags[0]) : null,
+    category:
+      Array.isArray(j.tags) && j.tags[0] != null
+        ? String(j.tags[0])
+        : null,
     description: j.description != null ? String(j.description) : null,
     publication_date: j.date != null ? String(j.date) : null,
     apply_url: String(j.apply_url ?? j.url ?? ""),
@@ -72,36 +105,52 @@ async function fetchRemoteOk(): Promise<NormalizedJob[]> {
   }));
 }
 
-/** ArbeitNow: https://www.arbeitnow.com/api/job-board-api */
+/* ------------------------------------------------ */
+/* ARBEITNOW                                        */
+/* https://www.arbeitnow.com/api/job-board-api      */
+/* ------------------------------------------------ */
+
 async function fetchArbeitNow(): Promise<NormalizedJob[]> {
   try {
     const data = await fetchJson<{ data?: unknown[] }>(
       "https://www.arbeitnow.com/api/job-board-api"
     );
+
     const list = Array.isArray(data?.data) ? data.data : [];
+
     return list
       .filter(
-        (j: Record<string, unknown>) =>
-          j?.url && j?.title && j?.company_name
+        (j): j is Record<string, unknown> =>
+          isObject(j) &&
+          hasKeys(j, ["url", "title", "company_name"])
       )
-      .map((j: Record<string, unknown>) => {
+      .map((j) => {
         const createdAt = j.created_at;
+
         const pubDate =
           typeof createdAt === "number"
             ? new Date(createdAt * 1000).toISOString()
             : createdAt != null
-              ? String(createdAt)
-              : null;
+            ? String(createdAt)
+            : null;
+
         const jobTypes = j.job_types;
+
         const expLevel =
           Array.isArray(jobTypes) && jobTypes[0] != null
             ? String(jobTypes[0])
             : null;
+
         return {
           title: String(j.title ?? ""),
           company: String(j.company_name ?? ""),
-          location: String(j.location || (j.remote ? "Remote" : "") || "Remote"),
-          category: j.tags?.[0] != null ? String(j.tags[0]) : null,
+          location: String(
+            j.location || (j.remote ? "Remote" : "") || "Remote"
+          ),
+          category:
+            Array.isArray(j.tags) && j.tags[0] != null
+              ? String(j.tags[0])
+              : null,
           description: j.description != null ? String(j.description) : null,
           publication_date: pubDate,
           apply_url: String(j.url ?? ""),
@@ -113,6 +162,10 @@ async function fetchArbeitNow(): Promise<NormalizedJob[]> {
   }
 }
 
+/* ------------------------------------------------ */
+/* RESULT TYPES                                     */
+/* ------------------------------------------------ */
+
 export interface FetchJobsResult {
   source: string;
   count: number;
@@ -120,7 +173,10 @@ export interface FetchJobsResult {
   error?: string;
 }
 
-/** Fetch from all sources; each source runs independently (one failure doesn't break others). */
+/* ------------------------------------------------ */
+/* FETCH ALL SOURCES                                */
+/* ------------------------------------------------ */
+
 export async function fetchAllJobSources(): Promise<FetchJobsResult[]> {
   const results: FetchJobsResult[] = [];
 
