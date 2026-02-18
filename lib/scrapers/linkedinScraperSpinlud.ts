@@ -63,7 +63,7 @@ export async function scrapeAndInsertLinkedInJobs(): Promise<number> {
       }
     });
 
-    scraper.on(events.scraper.error, (err: Error) => {
+    scraper.on(events.scraper.error, (err: any) => {
       reject(err);
     });
 
