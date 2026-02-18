@@ -56,7 +56,7 @@ export async function scrapeAndInsertLinkedInJobs(): Promise<number> {
       args: ["--lang=en-US", "--no-sandbox"],
     });
 
-    scraper.on(events.scraper.data, (data: LinkedinScraperEventData) => {
+    scraper.on(events.scraper.data, (data: any) => {
       const link = data.link?.trim();
       if (link) {
         jobs.push(mapJobToRow(data));
