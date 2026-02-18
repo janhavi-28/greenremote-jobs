@@ -51,7 +51,7 @@ export async function scrapeAndInsertLinkedInJobs(): Promise<number> {
 
   return new Promise((resolve, reject) => {
     const scraper = new LinkedinScraper({
-      headless: "new",
+      headless: true,
       slowMo: 200,
       args: ["--lang=en-US", "--no-sandbox"],
     });
