@@ -1,0 +1,29 @@
+# linkedin-scraper/.gitignore
+# Keep credentials out of source control
+
+# Environment secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Playwright artifacts
+playwright-traces/
+test-results/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db

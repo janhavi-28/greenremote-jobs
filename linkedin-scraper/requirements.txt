@@ -1,0 +1,21 @@
+# ── Core scraping ─────────────────────────────────────────────────────────────
+playwright==1.44.0          # Browser automation (Chromium)
+
+# ── Supabase client ───────────────────────────────────────────────────────────
+supabase==2.28.0            # Official Python Supabase client (supports new sb_secret_ keys)
+
+# ── HTML / text processing ────────────────────────────────────────────────────
+beautifulsoup4==4.12.3      # HTML parser for cleaning raw job descriptions
+lxml==5.2.1                 # Fast HTML/XML parser backend for bs4
+
+# ── Translation ───────────────────────────────────────────────────────────────
+deep-translator==1.11.4     # Free translation (Google/MyMemory/DeepL backends)
+langdetect==1.0.9           # Detect source language before translating
+
+# ── Scheduling ────────────────────────────────────────────────────────────────
+schedule==1.2.1             # Lightweight in-process cron
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dotenv==1.0.1        # Load .env variables
+tenacity==8.3.0             # Retry logic with exponential back-off
+colorlog==6.8.0             # Coloured log output
