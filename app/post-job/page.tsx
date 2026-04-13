@@ -1,12 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function PostJob() {
   const [title, setTitle] = useState("");
@@ -19,23 +13,30 @@ export default function PostJob() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.from("jobs").insert([
-      {
-        title,
-        company,
-        location,
-        apply_url: applyUrl,
-      },
-    ]);
+    try {
+      const response = await fetch("/api/add-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          company,
+          location,
+          apply_url: applyUrl,
+        }),
+      });
+      const data = (await response.json()) as { error?: string };
 
-    if (error) {
-      alert("Error adding job: " + error.message);
-    } else {
-      alert("Job added successfully!");
-      setTitle("");
-      setCompany("");
-      setLocation("Remote");
-      setApplyUrl("");
+      if (!response.ok) {
+        alert("Error adding job: " + (data.error ?? "Unknown error"));
+      } else {
+        alert("Job added successfully!");
+        setTitle("");
+        setCompany("");
+        setLocation("Remote");
+        setApplyUrl("");
+      }
+    } catch (error) {
+      alert("Error adding job: " + (error instanceof Error ? error.message : "Unknown error"));
     }
 
     setLoading(false);

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 interface JobCardProps {
   job: {
     id?: string;
@@ -40,7 +42,6 @@ function isRemote(loc: string | undefined | null): boolean {
   return /remote/i.test(loc);
 }
 
-/** Remove gender designation like (m/w/d) from job titles, anywhere in the string. */
 function stripGenderDesignation(text: string | null | undefined): string {
   if (!text) return "";
   return text
@@ -49,14 +50,14 @@ function stripGenderDesignation(text: string | null | undefined): string {
     .trim();
 }
 
-export default function JobCard({ job, isAdmin }: JobCardProps) {
+export default function JobCard({ job }: JobCardProps) {
   const company = job.company ?? job.company_name ?? "Company";
-  const location = job.location ?? job.candidate_required_location ?? "—";
-  const applyUrl = job.apply_url ?? job.url ?? "#";
+  const location = job.location ?? job.candidate_required_location ?? "-";
   const title = stripGenderDesignation(job.title) || job.title || "";
   const snippet = stripHtml(job.description).slice(0, 160);
   const date = formatDate(job.publication_date ?? job.created_at);
   const remote = isRemote(location);
+  const jobHref = job.id ? `/jobs/${encodeURIComponent(job.id)}` : null;
 
   return (
     <article className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-6 shadow-lg hover:border-zinc-700 hover:bg-zinc-900/80 transition-all duration-200">
@@ -80,44 +81,42 @@ export default function JobCard({ job, isAdmin }: JobCardProps) {
             )}
           </div>
 
-          <h2 className="text-lg font-semibold text-cyan-400 tracking-tight hover:text-cyan-300">
-            {title}
-          </h2>
+          {jobHref ? (
+            <Link href={jobHref}>
+              <h2 className="text-lg font-semibold text-cyan-400 tracking-tight hover:text-cyan-300 cursor-pointer">
+                {title}
+              </h2>
+            </Link>
+          ) : (
+            <h2 className="text-lg font-semibold text-cyan-400 tracking-tight">
+              {title}
+            </h2>
+          )}
 
           <p className="mt-1 text-sm text-zinc-400">
             <span className="font-medium text-zinc-300">{company}</span>
-            <span className="text-zinc-600 mx-2">·</span>
+            <span className="text-zinc-600 mx-2">.</span>
             <span>{location}</span>
           </p>
 
           {snippet && (
             <p className="mt-3 text-sm text-zinc-500 line-clamp-2">
               {snippet}
-              {stripHtml(job.description).length > 160 ? "…" : ""}
+              {stripHtml(job.description).length > 160 ? "..." : ""}
             </p>
           )}
 
-          {date && (
-            <p className="mt-3 text-xs text-zinc-500">Posted {date}</p>
-          )}
+          {date && <p className="mt-3 text-xs text-zinc-500">Posted {date}</p>}
         </div>
 
         <div className="flex flex-col items-stretch sm:items-end gap-2 shrink-0">
-          <a
-            href={applyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 transition-colors"
-          >
-            View details
-          </a>
-          {isAdmin && (
-            <button
-              type="button"
-              className="text-xs text-red-400 hover:text-red-300 hover:underline"
+          {jobHref && (
+            <Link
+              href={jobHref}
+              className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-cyan-500 transition-colors"
             >
-              Delete
-            </button>
+              View details
+            </Link>
           )}
         </div>
       </div>

@@ -1,67 +1,25 @@
 import { NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase";
-import { fetchAllJobSources } from "@/lib/job-sources";
-import { ensureJobsEnglish } from "@/lib/translate";
+import { runJobsScraper } from "@/lib/jobs-scraper";
 
-/**
- * GET /api/fetch-jobs
- * Fetches jobs from Remotive, RemoteOK, and ArbeitNow, then upserts into Supabase.
- * Duplicates are skipped (unique on apply_url).
- */
+export const runtime = "nodejs";
+
 export async function GET() {
   try {
-    const supabase = getSupabaseServer();
-    const results = await fetchAllJobSources();
-
-    let totalInserted = 0;
-    const summary: { source: string; fetched: number; inserted: number; error?: string }[] = [];
-
-    for (const { source, jobs, count, error } of results) {
-      if (error) {
-        summary.push({ source, fetched: 0, inserted: 0, error });
-        continue;
-      }
-
-      const filtered = jobs.filter((j) => j.apply_url?.trim());
-      const translated = await ensureJobsEnglish(filtered);
-      const rows = translated.map((j) => ({
-        title: j.title,
-        company: j.company,
-        location: j.location || "Remote",
-        description: j.description,
-        apply_url: j.apply_url,
-      }));
-
-      if (rows.length === 0) {
-        summary.push({ source, fetched: count, inserted: 0 });
-        continue;
-      }
-
-      const { data, error: upsertError } = await supabase
-        .from("jobs")
-        .upsert(rows, {
-          onConflict: "apply_url",
-          ignoreDuplicates: true,
-        })
-        .select("id");
-
-      if (upsertError) {
-        summary.push({ source, fetched: count, inserted: 0, error: upsertError.message });
-        continue;
-      }
-
-      const inserted = Array.isArray(data) ? data.length : 0;
-      totalInserted += inserted;
-      summary.push({ source, fetched: count, inserted });
-    }
+    const scraperResult = await runJobsScraper("all");
 
     return NextResponse.json({
       ok: true,
-      totalInserted,
-      summary,
+      fetched: scraperResult.total,
+      inserted: scraperResult.inserted,
+      matched: scraperResult.matched,
+      modified: scraperResult.modified,
+      snapshotFile: scraperResult.snapshot_file ?? null,
+      sourceFiles: scraperResult.source_files ?? {},
+      scrapers: scraperResult.scrapers,
     });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to fetch jobs";
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to run Jobs_Scraper import";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

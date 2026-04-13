@@ -6,6 +6,7 @@
 const MYMEMORY_URL = "https://api.mymemory.translated.net/get";
 const MAX_CHARS_PER_REQUEST = 400; // API limit ~500 bytes
 const REQUEST_DELAY_MS = 200; // Avoid rate limits
+const LONG_TEXT_MAX_CHARS = 2200;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,9 +44,10 @@ export function isLikelyEnglish(text: string): boolean {
  * Translate a single string to English. Returns original on failure or if empty.
  * Truncates to MAX_CHARS_PER_REQUEST to respect API limits.
  */
-export async function translateToEnglish(text: string): Promise<string> {
+export async function translateToEnglish(text: string, force = false): Promise<string> {
   const trimmed = text.trim();
-  if (!trimmed || isLikelyEnglish(trimmed)) return trimmed;
+  if (!trimmed) return trimmed;
+  if (!force && isLikelyEnglish(trimmed)) return trimmed;
   const toTranslate = trimmed.length > MAX_CHARS_PER_REQUEST
     ? trimmed.slice(0, MAX_CHARS_PER_REQUEST)
     : trimmed;
@@ -55,14 +57,80 @@ export async function translateToEnglish(text: string): Promise<string> {
     url.searchParams.set("langpair", "auto|en");
     const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return trimmed;
-    const data = (await res.json()) as { response?: { translatedText?: string }; quotaFinished?: boolean };
+    const data = (await res.json()) as {
+      responseData?: { translatedText?: string };
+      response?: { translatedText?: string };
+      quotaFinished?: boolean;
+    };
     if (data.quotaFinished) return trimmed;
-    const translated = data.response?.translatedText?.trim();
+    const translated =
+      data.responseData?.translatedText?.trim() ?? data.response?.translatedText?.trim();
     if (translated) return translated;
     return trimmed;
   } catch {
     return trimmed;
   }
+}
+
+function splitTextForTranslation(text: string, maxChars = MAX_CHARS_PER_REQUEST): string[] {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+  if (normalized.length <= maxChars) return [normalized];
+
+  const parts = normalized.split(/(?<=[.!?])\s+/);
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const part of parts) {
+    if (!part) continue;
+    if (!current) {
+      current = part;
+      continue;
+    }
+
+    if ((current + " " + part).length <= maxChars) {
+      current += ` ${part}`;
+      continue;
+    }
+
+    chunks.push(current);
+    if (part.length <= maxChars) {
+      current = part;
+      continue;
+    }
+
+    for (let i = 0; i < part.length; i += maxChars) {
+      chunks.push(part.slice(i, i + maxChars));
+    }
+    current = "";
+  }
+
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+/** Translate longer text by chunking while preserving order. */
+export async function translateLongToEnglish(
+  text: string,
+  maxChars = LONG_TEXT_MAX_CHARS,
+  force = false,
+): Promise<string> {
+  const trimmed = text.trim();
+  if (!trimmed) return trimmed;
+  if (!force && isLikelyEnglish(trimmed)) return trimmed;
+
+  const source = trimmed.slice(0, maxChars);
+  const chunks = splitTextForTranslation(source);
+  if (chunks.length === 0) return trimmed;
+
+  const translatedChunks: string[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const translated = await translateToEnglish(chunks[i], force);
+    translatedChunks.push(translated);
+    if (i < chunks.length - 1) await delay(REQUEST_DELAY_MS);
+  }
+
+  return translatedChunks.join(" ").replace(/\s+/g, " ").trim();
 }
 
 export interface JobTextFields {
@@ -77,17 +145,17 @@ export interface JobTextFields {
  * Runs translations with a short delay between calls to avoid rate limits.
  */
 export async function ensureJobEnglish<T extends JobTextFields>(job: T): Promise<T> {
-  const title = await translateToEnglish(job.title);
+  const title = await translateToEnglish(job.title, true);
   await delay(REQUEST_DELAY_MS);
-  const company = await translateToEnglish(job.company);
+  const company = await translateToEnglish(job.company, true);
   await delay(REQUEST_DELAY_MS);
   const location = job.location
-    ? await translateToEnglish(String(job.location))
+    ? await translateToEnglish(String(job.location), true)
     : (job.location ?? "");
   await delay(REQUEST_DELAY_MS);
   const description =
     job.description && String(job.description).trim()
-      ? await translateToEnglish(String(job.description).slice(0, MAX_CHARS_PER_REQUEST))
+      ? await translateLongToEnglish(String(job.description), LONG_TEXT_MAX_CHARS, true)
       : job.description;
 
   return { ...job, title, company, location, description };

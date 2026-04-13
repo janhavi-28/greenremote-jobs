@@ -1,11 +1,7 @@
-/**
- * API route: POST/GET /api/scrape-linkedin
- * Calls the LinkedIn scraper and returns inserted/updated count.
- * Server-side only. Does not modify any existing app logic.
- */
-
 import { NextResponse } from "next/server";
-import { scrapeAndInsertLinkedInJobs } from "@/lib/scrapers/linkedinScraper";
+import { runJobsScraper } from "@/lib/jobs-scraper";
+
+export const runtime = "nodejs";
 
 export async function GET() {
   return runScrape();
@@ -17,10 +13,21 @@ export async function POST() {
 
 async function runScrape() {
   try {
-    const { fetched, inserted } = await scrapeAndInsertLinkedInJobs();
-    return NextResponse.json({ success: true, fetched, inserted });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : typeof e === "string" ? e : String(e);
+    const scraperResult = await runJobsScraper("linkedin");
+
+    return NextResponse.json({
+      success: true,
+      fetched: scraperResult.total,
+      inserted: scraperResult.inserted,
+      matched: scraperResult.matched,
+      modified: scraperResult.modified,
+      snapshotFile: scraperResult.snapshot_file ?? null,
+      sourceFiles: scraperResult.source_files ?? {},
+      scrapers: scraperResult.scrapers,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to scrape LinkedIn jobs";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
