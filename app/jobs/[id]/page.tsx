@@ -3,6 +3,9 @@ import Link from "next/link";
 import JobDescriptionPreview from "@/components/JobDescriptionPreview";
 import { getJobById } from "@/lib/jobs";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface JobDetailsPageProps {
   params: Promise<{ id: string }>;
 }

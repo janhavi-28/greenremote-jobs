@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { deleteJobById, getJobs } from "@/lib/jobs";
 import type { JobFilters, SortOption } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

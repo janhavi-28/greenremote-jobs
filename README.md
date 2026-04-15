@@ -39,9 +39,11 @@ npm run dev
 - It runs the scrapers, reads the latest CSV output from each source, normalizes the rows, optionally writes a `jobs_clean_*.xlsx` snapshot, and bulk upserts directly into Mongo Atlas.
 - `/api/fetch-jobs` runs the full pipeline.
 - `/api/scrape-linkedin` runs only the LinkedIn pipeline.
+- `.github/workflows/linkedin-scraper.yml` runs the same pipeline automatically every 4 hours in GitHub Actions.
 
 ## Notes
 
 - Mongo Atlas is the system of record.
 - The generated Excel file is only a snapshot/report, not the main import source.
 - `apply_url` is the main dedupe key, with an internal fallback key only when a scraper has no URL.
+- Add `MONGODB_URI`, `MONGODB_DB_NAME`, and `MONGODB_COLLECTION_NAME` as GitHub Actions secrets so the scheduled workflow can write to the same live database as your deployed site.

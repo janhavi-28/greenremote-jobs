@@ -6,6 +6,9 @@ import JobsFilters from "@/components/JobsFilters";
 import JobsPagination from "@/components/JobsPagination";
 import JobsSearchBar from "@/components/JobsSearchBar";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const LIMIT = 12;
 
 interface JobsPageProps {

@@ -5,8 +5,9 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -48,6 +49,7 @@ def parse_args():
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-snapshot", action="store_true")
     parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--recent-days", type=int, default=None)
     return parser.parse_args()
 
 
@@ -145,12 +147,98 @@ def build_internal_apply_url(record: Dict[str, object]) -> str:
     return f"internal://jobs-scraper/{digest}"
 
 
+def canonicalize_apply_url(url: str) -> str:
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+
+    parsed = urlsplit(raw)
+    scheme = (parsed.scheme or "https").lower()
+    netloc = parsed.netloc.lower()
+    path = parsed.path.rstrip("/")
+
+    # Keep only meaningful query params and drop common tracking noise.
+    allowed_query = []
+    for key, value in parse_qsl(parsed.query, keep_blank_values=False):
+        key_lower = key.lower()
+        if key_lower.startswith("utm_"):
+            continue
+        if key_lower in {
+            "trk",
+            "trkemail",
+            "trackingid",
+            "refid",
+            "ref",
+            "src",
+            "source",
+            "campaignid",
+        }:
+            continue
+        allowed_query.append((key, value))
+
+    query = urlencode(allowed_query, doseq=True)
+    return urlunsplit((scheme, netloc, path, query, ""))
+
+
+def build_dedupe_key(record: Dict[str, object], apply_url: str) -> str:
+    source = str(record.get("source", "")).strip().lower()
+    if apply_url:
+        return f"url::{source}::{apply_url}"
+
+    fallback = "|".join(
+        [
+            source,
+            str(record.get("title", "")).strip().lower(),
+            str(record.get("company", "")).strip().lower(),
+            str(record.get("location", "")).strip().lower(),
+            str(record.get("publication_date", "")).strip().lower(),
+        ]
+    )
+    digest = hashlib.sha1(fallback.encode("utf-8")).hexdigest()
+    return f"fallback::{source}::{digest}"
+
+
+def parse_publication_datetime(value: object) -> Optional[datetime]:
+    raw = str(value or "").strip()
+    if not raw or raw.lower() in {"not specified", "nan", "none", "null"}:
+        return None
+
+    normalized = raw.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        pass
+
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y", "%b %d, %Y", "%B %d, %Y"):
+        try:
+            return datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+
+    return None
+
+
+def filter_recent_jobs(df: pd.DataFrame, recent_days: Optional[int]) -> pd.DataFrame:
+    if df.empty or recent_days is None or recent_days <= 0:
+        return df
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=recent_days)
+    parsed_dates = df["publication_date"].apply(parse_publication_datetime)
+    keep_mask = parsed_dates.apply(lambda value: value is None or value >= cutoff)
+    return df[keep_mask].reset_index(drop=True)
+
+
 def dataframe_to_jobs(df: pd.DataFrame) -> List[Dict[str, object]]:
     cleaned = df.copy().fillna("")
     jobs: List[Dict[str, object]] = []
 
     for record in cleaned.to_dict(orient="records"):
-        apply_url = str(record.get("apply_url", "")).strip() or build_internal_apply_url(record)
+        raw_apply_url = str(record.get("apply_url", "")).strip()
+        canonical_apply_url = canonicalize_apply_url(raw_apply_url)
+        apply_url = canonical_apply_url or build_internal_apply_url(record)
         tags = [tag.strip() for tag in str(record.get("tags", "")).split(",") if tag.strip()]
         jobs.append(
             {
@@ -161,6 +249,8 @@ def dataframe_to_jobs(df: pd.DataFrame) -> List[Dict[str, object]]:
                 "description": str(record.get("description", "")).strip() or None,
                 "publication_date": str(record.get("publication_date", "")).strip() or None,
                 "apply_url": apply_url,
+                "raw_apply_url": raw_apply_url or None,
+                "dedupe_key": build_dedupe_key(record, apply_url),
                 "experience_level": str(record.get("experience_level", "")).strip() or None,
                 "salary": str(record.get("salary", "")).strip() or None,
                 "source": str(record.get("source", "")).strip() or None,
@@ -168,7 +258,7 @@ def dataframe_to_jobs(df: pd.DataFrame) -> List[Dict[str, object]]:
             }
         )
 
-    unique_jobs = {job["apply_url"]: job for job in jobs}
+    unique_jobs = {job["dedupe_key"]: job for job in jobs}
     return list(unique_jobs.values())
 
 
@@ -208,6 +298,7 @@ def upsert_to_mongo(jobs: List[Dict[str, object]]) -> Dict[str, int]:
     try:
         collection = client[db_name][collection_name]
         collection.create_index("apply_url", unique=True)
+        collection.create_index("dedupe_key", sparse=True)
         collection.create_index("created_at")
         collection.create_index("source")
 
@@ -215,7 +306,12 @@ def upsert_to_mongo(jobs: List[Dict[str, object]]) -> Dict[str, int]:
         for job in jobs:
             operations.append(
                 UpdateOne(
-                    {"apply_url": job["apply_url"]},
+                    {
+                        "$or": [
+                            {"dedupe_key": job["dedupe_key"]},
+                            {"apply_url": job["apply_url"]},
+                        ]
+                    },
                     {
                         "$set": {
                             **job,
@@ -270,6 +366,7 @@ def main():
                 )
 
     merged = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    merged = filter_recent_jobs(merged, args.recent_days or int(os.getenv("SCRAPER_RECENT_DAYS", "30")))
     jobs = dataframe_to_jobs(merged) if not merged.empty else []
     snapshot_file = None if args.skip_snapshot or merged.empty else save_snapshot(merged)
 

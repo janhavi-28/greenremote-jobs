@@ -39,4 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-*.csv
+*.csvJobs_Scraper/jobs_clean_*.xlsx
+Jobs_Scraper/latest_jobs.json
+Jobs_Scraper/__pycache__/
