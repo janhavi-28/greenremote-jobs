@@ -280,12 +280,12 @@ def upsert_to_mongo(jobs: List[Dict[str, object]]) -> Dict[str, int]:
     import certifi
     from pymongo import MongoClient, UpdateOne
 
-    uri = os.getenv("MONGODB_URI")
+    uri = (os.getenv("MONGODB_URI") or "").strip()
     if not uri:
         raise RuntimeError("Missing MONGODB_URI")
 
-    db_name = os.getenv("MONGODB_DB_NAME", "greenremote")
-    collection_name = os.getenv("MONGODB_COLLECTION_NAME", "jobs")
+    db_name = (os.getenv("MONGODB_DB_NAME", "greenremote") or "greenremote").strip()
+    collection_name = (os.getenv("MONGODB_COLLECTION_NAME", "jobs") or "jobs").strip()
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     client = MongoClient(
