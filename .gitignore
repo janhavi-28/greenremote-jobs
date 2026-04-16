@@ -39,6 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-*.csvJobs_Scraper/jobs_clean_*.xlsx
+
+# scraper outputs
+Jobs_Scraper/jobs_clean_*.xlsx
 Jobs_Scraper/latest_jobs.json
 Jobs_Scraper/__pycache__/
+Jobs_Scraper/data/
+Jobs_Scraper/Amazon/data/
+Jobs_Scraper/CutShort/data/
+Jobs_Scraper/Google/data/
+Jobs_Scraper/Hirist/data/
+Jobs_Scraper/Internshala/data/
+Jobs_Scraper/Linkedin/data/
+Jobs_Scraper/WeWorkRemotely/data/
+Jobs_Scraper/jobsora/data/
+Jobs_Scraper/remoteok/data/
+Jobs_Scraper/jobsora/hirist_jobs.csv
